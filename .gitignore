@@ -1,0 +1,14 @@
+# Fichiers Python
+*.pyc
+__pycache__/
+
+# Dossier virtualenv
+venv/
+
+# Configurations IDE
+.idea/
+.vscode/
+
+# Fichiers système
+.DS_Store
+Thumbs.db
