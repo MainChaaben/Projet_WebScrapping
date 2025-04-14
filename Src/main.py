@@ -1,3 +1,4 @@
+import settings
 import re
 import sys
 import csv
@@ -11,6 +12,10 @@ from PyQt5.QtWidgets import (
 
 from scrapy import Spider
 from scrapy.crawler import CrawlerProcess
+from scrapy.settings import Settings
+
+custom_settings = Settings()
+custom_settings.setmodule(settings)
 
 # Fonction pour extraire le domaine principal à partir de l'URL
 def extract_domain(url):
@@ -18,7 +23,7 @@ def extract_domain(url):
     return parsed_url.netloc.replace('www.', '')  # On exclut 'www.' pour avoir uniquement le domaine qui nous intéresse
 
 # On évite de suivre des liens qui ne nous intéressent pas
-# Comme les fichiers pdf, images, excels etc..
+# Comme les fichiers pdf, images, excels, etc..
 def check_url(url):
     # Schémas à éviter (mailto, tel, javascript, etc.)
     bad_schemes = ['mailto:', 'tel:', 'javascript:', 'ftp:', 'file:']
@@ -51,6 +56,7 @@ class ScrapySpider(Spider):
     start_urls = []
 
     def __init__(self, url, pattern, callback, allowed_domains):
+        super().__init__()
         self.start_urls = [url]
         self.pattern = pattern
         self.callback = callback
@@ -81,10 +87,10 @@ class ScrapySpider(Spider):
         for result in results:
             # Loguer l'URL où un match a été trouvé
             logging.info(f"Match trouvé dans {response.url}: {result}")
-            self.all_results.append(f"Match trouvé dans {response.url}: {result}")
+            self.all_results.append(f"{response.url};{result}")
 
+    # Cette méthode est appelée quand le spider a terminé pour enregistrer le résultat
     def closed(self, reason):
-        """Cette méthode est appelée quand le spider a terminé"""
         # Envoyer tous les résultats à la fin
         self.callback(self.all_results)
 
@@ -156,18 +162,8 @@ class WebExtractionApp(QWidget):
         # Extraire le domaine à partir de l'URL
         domain = extract_domain(url)
 
-        # Paramètres de configuration de Scrapy pour limiter le crawling
-        custom_settings = {
-            'DEPTH_LIMIT': 2,  # Limiter à 2 niveaux
-            'DOWNLOAD_DELAY': 1,  # Délai de 1 seconde entre chaque requête
-            'EXTENSIONS': {
-                'scrapy.extensions.telnet.TelnetConsole': None,  # Désactiver la console Telnet
-            },
-            'LOG_LEVEL': 'INFO',  # Réduire la verbosité des logs
-        }
-
         # Démarrage de Scrapy avec la configuration
-        process = CrawlerProcess(custom_settings)
+        process = CrawlerProcess(settings=custom_settings)
         process.crawl(ScrapySpider, url=url, pattern=regex, callback=self.display, allowed_domains=[domain])
 
         # Démarrer Scrapy dans un thread séparé
