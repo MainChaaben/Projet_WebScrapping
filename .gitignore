@@ -1,6 +1,12 @@
 # Fichiers Python
 *.pyc
 __pycache__/
+*.py[cod]
+*$py.class
+env/
+venv/
+.env/
+.venv/
 
 # Dossier virtualenv
 venv/
@@ -12,3 +18,7 @@ venv/
 # Fichiers système
 .DS_Store
 Thumbs.db
+
+# Misc
+*.log
+*.csv

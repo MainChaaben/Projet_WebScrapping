@@ -4,10 +4,11 @@ import sys
 import csv
 from urllib.parse import urlparse
 import logging
+import os
 
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit,
-    QTextEdit, QPushButton, QFileDialog, QMessageBox
+    QTextEdit, QPushButton, QFileDialog, QMessageBox, QComboBox, QHBoxLayout
 )
 
 from scrapy import Spider
@@ -16,6 +17,18 @@ from scrapy.settings import Settings
 
 custom_settings = Settings()
 custom_settings.setmodule(settings)
+
+# Dictionnaire des expressions régulières prédéfinies
+PREDEFINED_REGEX = {
+    "Adresses IP": r"\b(?:\d{1,3}\.){3}\d{1,3}\b",
+    "Adresses email": r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",
+    "Dates (format JJ/MM/AAAA)": r"\b\d{2}/\d{2}/\d{4}\b",
+    "Dates (format AAAA-MM-JJ)": r"\b\d{4}-\d{2}-\d{2}\b",
+    "URLs": r"https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+(?:/[-\w%!./?=&]*)*",
+    "Numéros de téléphone (FR)": r"(?:(?:\+|00)33[\s.-]{0,3}(?:\(0\)[\s.-]{0,3})?|0)[1-9](?:(?:[\s.-]?\d{2}){4})",
+    "Codes postaux (FR)": r"\b\d{5}\b",
+    "Hashtags": r"#[A-Za-z0-9_]+",
+}
 
 # Fonction pour extraire le domaine principal à partir de l'URL
 def extract_domain(url):
@@ -101,7 +114,7 @@ class WebExtractionApp(QWidget):
         self.setGeometry(200, 200, 500, 400)
 
         # Charger le style QSS
-        with open("style.qss", "r") as f:
+        with open(os.path.join(os.path.dirname(__file__), "style.qss"), "r") as f:
             self.setStyleSheet(f.read())
 
         # Interface Graphique
@@ -111,9 +124,23 @@ class WebExtractionApp(QWidget):
         self.label_url = QLabel("URL :")
         self.input_url = QLineEdit()
 
-        # Input pour le regex
+        # Input pour le regex avec menu déroulant à côté
         self.label_regex = QLabel("Expression régulière :")
+        
+        # Création d'un layout horizontal pour placer le champ regex et le menu déroulant côte à côte
+        regex_layout = QHBoxLayout()
         self.input_regex = QLineEdit()
+        
+        # Création du menu déroulant des regex prédéfinis
+        self.regex_combo = QComboBox()
+        self.regex_combo.addItem("Sélectionnez un élément prédéfini...")
+        for name in PREDEFINED_REGEX.keys():
+            self.regex_combo.addItem(name)
+        self.regex_combo.currentIndexChanged.connect(self.update_regex_from_selection)
+        
+        # Ajout des widgets au layout horizontal
+        regex_layout.addWidget(self.input_regex)
+        regex_layout.addWidget(self.regex_combo)
 
         # Zone d'affichage du résultat
         self.result_area = QTextEdit()
@@ -131,19 +158,26 @@ class WebExtractionApp(QWidget):
         self.layout.addWidget(self.label_url)
         self.layout.addWidget(self.input_url)
         self.layout.addWidget(self.label_regex)
-        self.layout.addWidget(self.input_regex)
+        self.layout.addLayout(regex_layout)  # On ajoute le layout horizontal au lieu du simple QLineEdit
         self.layout.addWidget(self.result_area)
         self.layout.addWidget(self.btn_extract)
         self.layout.addWidget(self.btn_export)
 
         self.setLayout(self.layout)
         self.results = []
+    
+    # Méthode pour mettre à jour le champ regex en fonction de la sélection
+    def update_regex_from_selection(self, index):
+        if index > 0:  # Ignorer l'élément "Sélectionner un regex prédéfini..."
+            regex_name = self.regex_combo.currentText()
+            regex_pattern = PREDEFINED_REGEX.get(regex_name, "")
+            self.input_regex.setText(regex_pattern)
 
     # Récupération et affichage des résultats
     def display(self, data):
         self.results = data
         self.result_area.setPlainText("\n".join(data))
-        QMessageBox.information(self, "Terminé", "Extraction réussi.")
+        QMessageBox.information(self, "Terminé", "Extraction réussie.")
 
     # Définition de la logique d'extraction
     def extract(self):
@@ -188,4 +222,3 @@ if __name__ == "__main__":
     window = WebExtractionApp()
     window.show()
     sys.exit(app.exec_())
-
